@@ -227,6 +227,10 @@ def main(method: List[str] = typer.Option(['qr'], help='Eigenvector method to us
     muon_dtype_scale_mode_test_acc_map = {}
     muon_dtype_scale_mode_steps_to_grok_map = {}
     for curr_dtype, curr_opt, curr_scale_mode in itertools.product(dtype, opt, scale_mode):
+        random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        np.random.seed(seed)
         train_iter = iter(train_loader)
         history = defaultdict(list)
         def data():
