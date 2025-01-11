@@ -167,7 +167,7 @@ def main(method: List[str] = typer.Option(['qr'], help='Eigenvector method to us
          train_percent: float = 0.1,
          eval_samples: int = 1024,
          printervall: int = 1000,
-         scale_mode: List[str] = typer.Option(["none", "none", "scale", "dual_norm", "modular_norm"]),
+         scale_mode: List[str] = typer.Option(["none", "scale", "dual_norm", "modular_norm"]),
          bias: bool = True,
          rms_norm: bool = False,
          seed: int = 42):
@@ -175,6 +175,8 @@ def main(method: List[str] = typer.Option(['qr'], help='Eigenvector method to us
     random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
     np.random.seed(seed)
 
     dtype = [getattr(torch, curr_dtype) for curr_dtype in dtype]
@@ -230,7 +232,10 @@ def main(method: List[str] = typer.Option(['qr'], help='Eigenvector method to us
         random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
         np.random.seed(seed)
+
         train_iter = iter(train_loader)
         history = defaultdict(list)
         def data():
@@ -249,11 +254,14 @@ def main(method: List[str] = typer.Option(['qr'], help='Eigenvector method to us
             if curr_scale_mode != 'none':
                 continue
             print(f"\nRunning {curr_opt} with {curr_dtype}")
-        model = copy.deepcopy(global_model)
+        model: ModularMLP = copy.deepcopy(global_model)
         model.to(dtype=curr_dtype)
+
+        # print(">>> INIT model weight view", model.net[0].weight.data[0,:10].detach().cpu().numpy())
 
         # Get optimizer class
         optimizer_class = getattr(heavyball, curr_opt)
+        print(f"Optimizer: {optimizer_class}")
         if curr_opt == "Muon":
             muon_params = []
             adam_params = []
@@ -277,17 +285,25 @@ def main(method: List[str] = typer.Option(['qr'], help='Eigenvector method to us
         for step in range(steps+1):
             model.train()
             x, y = data()
+            # if step in [10, 20, 100]:
+            #     print("train_data", x, y)
 
-            model.zero_grad(set_to_none=True)
-            # optimizer.zero_grad()
+            for optimizer in optimizers:
+                optimizer.zero_grad()
             out = model(x)
             loss = criterion(out, y)
             loss.backward()
             for optimizer in optimizers:
                 optimizer.step()
+            
+            # if step in [10, 20, 100]:
+            #     print(f">>> post-step {step} model weight view", model.net[0].weight.data[0,:10].detach().cpu().numpy())
 
             with torch.no_grad():
                 loss_hist[step] = loss.detach()
+                # if step in [10, 20, 100]:
+                #     print(f"Step {step}: Loss = {loss.item():.4f}")
+                #     print()
 
                 if step % printervall == 0:
                     lh = loss_hist[:step][-printervall:].mean().item()
