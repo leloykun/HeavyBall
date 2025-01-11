@@ -63,7 +63,7 @@ class ForeachMuon(C.BaseOpt):
                  foreach: bool = True, storage_dtype: str = 'float32', mars: bool = False, caution: bool = False,
                  mars_gamma: float = 0.0025, gradient_clipping: C.str_or_fn = C.use_default,
                  update_clipping: C.str_or_fn = C.use_default, palm: bool = C.use_default, beta2_scale: float = 0.8,
-                 nesterov: bool = True):
+                 nesterov: bool = True, scale_mode: C.str_or_fn = C.use_default):
         defaults = locals()
         defaults.pop("self")
         params = defaults.pop("params")

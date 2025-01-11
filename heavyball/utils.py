@@ -262,7 +262,8 @@ def zeropower_via_newtonschulz5(G, steps=5, eps=1e-7):
     """
     assert len(G.shape) == 2
     a, b, c = (3.4445, -4.7750, 2.0315)
-    X = G.bfloat16()
+    # X = G.bfloat16()
+    X = G
     X /= (X.norm() + eps)  # ensure top singular value <= 1
     if G.size(0) > G.size(1):
         X = X.T
@@ -338,6 +339,12 @@ def inplace_orthogonal_(x: Tensor, mode: str, out: Tensor, scale_mode: str):
         pass
     elif scale_mode == "scale":
         y *= max(1, x.size(0) / x.size(1)) ** 0.5
+    elif scale_mode == "dual_norm":
+        y = torch.einsum("ij,ij,ab->ab", x, y, y)
+        y *= max(1, x.size(0) / x.size(1)) ** 0.5
+    elif scale_mode == "modular_norm":
+        y = torch.einsum("ij,ij,ab->ab", x, y, y)
+        y *= (x.size(0) / x.size(1)) ** 0.5
     elif scale_mode == "graft":
         y = _compilable_grafting(x, y)
     else:
